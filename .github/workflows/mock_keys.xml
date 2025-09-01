@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="dji_key">mock_key</string>
-    <string name="google_key">mock_key</string>
+    <string name="dji_key">496b0c6af2c99d99a9860d8f</string>
+    <string name="google_key">AIzaSyAQm1C-hv_hcJjCeSIW8W7YPQal46Uq31w</string>
 </resources>
