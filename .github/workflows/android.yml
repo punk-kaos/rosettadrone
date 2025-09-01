@@ -16,7 +16,7 @@ jobs:
 
       # NDK 22
       - uses: nttld/setup-ndk@v1
-        with: { ndk-version: 22.0.7026061, add-to-path: true }
+        with: { ndk-version: r22b, add-to-path: true }
 
       - name: Accept licenses
         run: yes | sdkmanager --licenses
