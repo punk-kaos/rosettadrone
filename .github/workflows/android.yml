@@ -8,20 +8,29 @@ jobs:
       - uses: actions/checkout@v4
         with: { lfs: true }
 
+      # JDK 17 d'abord (requis par cmdline-tools 16+)
       - uses: actions/setup-java@v4
-        with: { distribution: temurin, java-version: '11', cache: gradle }
+        with: { distribution: temurin, java-version: '17', cache: gradle }
 
       - uses: android-actions/setup-android@v3
 
-      - name: Install NDK 22
-        uses: nttld/setup-ndk@v1
+      # NDK 22
+      - uses: nttld/setup-ndk@v1
         with: { ndk-version: 22.0.7026061, add-to-path: true }
 
       - name: Accept licenses
         run: yes | sdkmanager --licenses
 
-      - name: Copy mock keys
-        run: cp ./.github/workflows/mock_keys.xml ./app/src/main/res/values/keys.xml
+      - name: Inject keys.xml
+        run: |
+          mkdir -p app/src/main/res/values
+          cat > app/src/main/res/values/keys.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+            <string name="dji_key">496b0c6af2c99d99a9860d8f</string>
+            <string name="google_key">AIzaSyAQm1C-hv_hcJjCeSIW8W7YPQal46Uq31w</string>
+          </resources>
+          EOF
 
       - name: Build APK
         run: ./gradlew clean assembleDebug --no-daemon
