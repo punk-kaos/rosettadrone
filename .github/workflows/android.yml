@@ -1,5 +1,5 @@
 name: Android CI
-on: [push, pull_request, workflow_dispatch]
+on: [workflow_dispatch]
 
 jobs:
   build:
@@ -8,19 +8,21 @@ jobs:
       - uses: actions/checkout@v4
         with: { lfs: true }
 
-      # JDK 17 d'abord (requis par cmdline-tools 16+)
+      # 1) JDK 17 (requis par cmdline-tools 16+)
       - uses: actions/setup-java@v4
-        with: { distribution: temurin, java-version: '17', cache: gradle }
-
+        with: { distribution: temurin, java-version: '17' }
       - uses: android-actions/setup-android@v3
+      - run: echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
+      - name: Install SDK/NDK + licenses
+        run: |
+          sdkmanager --install "platform-tools" "build-tools;34.0.0" "platforms;android-34" "ndk;22.1.7171670"
+          yes | sdkmanager --licenses
 
-      # NDK 22
-      - uses: nttld/setup-ndk@v1
-        with: { ndk-version: r22b, add-to-path: true }
+      # 2) JDK 11 pour Gradle 6.8.3 (évite l’erreur major 61)
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '11', cache: gradle }
 
-      - name: Accept licenses
-        run: yes | sdkmanager --licenses
-
+      # keys.xml via secrets
       - name: Inject keys.xml
         run: |
           mkdir -p app/src/main/res/values
@@ -39,3 +41,5 @@ jobs:
         with:
           name: rosettadrone-apk
           path: '**/build/outputs/apk/**/*.apk'
+
+
