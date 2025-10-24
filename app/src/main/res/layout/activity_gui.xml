@@ -292,11 +292,12 @@
 
                 <Button
                     android:id="@+id/btn_config"
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_marginEnd="16dp"
+                    android:padding="4dp"
                     android:background="@drawable/ic_settings_white_24dp"
-                    android:onClick="showPopup"
-                    android:layout_marginEnd="8dp" />
+                    android:onClick="showPopup" />
             </LinearLayout>
 
 
@@ -426,5 +427,3 @@
    </RelativeLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
-
-

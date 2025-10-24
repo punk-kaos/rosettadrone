@@ -6,6 +6,8 @@ import android.view.View;
 
 import com.google.android.material.snackbar.Snackbar;
 
+import android.util.Log;
+
 import androidx.appcompat.app.AlertDialog;
 
 import static sq.rogue.rosettadrone.util.TYPE_DRONE_ID;
@@ -24,9 +26,18 @@ import static sq.rogue.rosettadrone.util.TYPE_WAYPOINT_MIN_SPEED;
 import static sq.rogue.rosettadrone.util.TYPE_WAYPOINT_TOTAL_DISTANCE;
 
 public class NotificationHandler {
+    private static final String TAG = NotificationHandler.class.getSimpleName();
+
     public static void notifySnackbar(View view, int resID, int duration) {
-        Snackbar snackbar = Snackbar.make(view, resID, duration);
-        snackbar.show();
+        if (view == null) {
+            Log.e(TAG, "Skipping snackbar: anchor view is null");
+            return;
+        }
+        if (resID == 0) {
+            Log.e(TAG, "Skipping snackbar: invalid resource id 0", new IllegalArgumentException("resID=0"));
+            return;
+        }
+        Snackbar.make(view, resID, duration).show();
     }
 
     public static void notifyAlert(Context context, int input, DialogInterface.OnClickListener clickListener,

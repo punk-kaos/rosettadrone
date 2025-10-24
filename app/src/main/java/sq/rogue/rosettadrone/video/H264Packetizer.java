@@ -19,9 +19,11 @@
 package sq.rogue.rosettadrone.video;
 
 import android.annotation.SuppressLint;
+import android.util.Base64;
 import android.util.Log;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -42,7 +44,6 @@ public class H264Packetizer extends AbstractPacketizer implements Runnable {
     private long delay = 0, oldtime = 0;
     private Statistics stats = new Statistics();
     private byte[] sps = null, pps = null, stapa = null;
-    private int count = 0;
     private int streamType = 1;
 
 
@@ -103,13 +104,38 @@ public class H264Packetizer extends AbstractPacketizer implements Runnable {
             // Write NALU 1 into the array, then write NALU 2 into the array.
             System.arraycopy(sps, 0, stapa, 3, sps.length);
             System.arraycopy(pps, 0, stapa, 5 + sps.length, pps.length);
+            String spsB64 = Base64.encodeToString(sps, Base64.NO_WRAP);
+            String ppsB64 = Base64.encodeToString(pps, Base64.NO_WRAP);
+            //Log.d(TAG, "Cached SPS length=" + sps.length + " PPS length=" + pps.length
+            //        + " sprop-parameter-sets=\"" + spsB64 + ',' + ppsB64 + "\"");
         }
+    }
+
+    private void sendParameterSets(long timestamp) throws IOException, InterruptedException {
+        if (stapa == null) {
+            return;
+        }
+        byte[] stapBuffer = socket.requestBuffer();
+        socket.markNextPacket();
+        socket.updateTimestamp(timestamp);
+        System.arraycopy(stapa, 0, stapBuffer, rtphl, stapa.length);
+        super.send(rtphl + stapa.length);
+    }
+
+    private String toHex(byte[] data, int count) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < count && i < data.length; i++) {
+            sb.append(String.format("%02X", data[i] & 0xFF));
+            if (i < count - 1) {
+                sb.append(' ');
+            }
+        }
+        return sb.toString();
     }
 
     public void run() {
         long duration = 0;
         stats.reset();
-        count = 0;
         streamType = 1;
         socket.setCacheSize(0);
 
@@ -175,24 +201,28 @@ public class H264Packetizer extends AbstractPacketizer implements Runnable {
         // The stream already contains NAL unit type 7 or 8, we don't need
         // to add them to the stream ourselves
         if (type == 7 || type == 8) {
-            //      Log.v(TAG, "SPS or PPS present in the stream.");
-            count++;
-            if (count > 4) {
-                sps = null;
-                pps = null;
+            byte[] paramBuffer = socket.requestBuffer();
+            paramBuffer[rtphl] = header[4];
+            len = fill(paramBuffer, rtphl + 1, naluLength - 1);
+            byte[] param = Arrays.copyOfRange(paramBuffer, rtphl, rtphl + naluLength);
+            if (type == 7) {
+                sps = param;
+            } else {
+                pps = param;
             }
+            setStreamParameters(pps, sps);
+            // send the parameter set immediately so downstream decoders lock on
+            sendParameterSets(ts);
+            socket.updateTimestamp(ts);
+            socket.markNextPacket();
+            super.send(naluLength + rtphl);
+            return;
         }
 
         // We send two packets containing NALU type 7 (SPS) and 8 (PPS)
         // Those should allow the H264 stream to be decoded even if no SDP was sent to the decoder.
-        if (type == 5 && sps != null && pps != null) {
-            buffer = socket.requestBuffer();
-            socket.markNextPacket();
-            socket.updateTimestamp(ts);
-            System.arraycopy(stapa, 0, buffer, rtphl, stapa.length);
-            super.send(rtphl + stapa.length);
-            //  Log.e(TAG,"-----  NAL unit - len:"+len+" delay: "+delay);
-
+        if (type == 5 && stapa != null) {
+            sendParameterSets(ts);
         }
 
         //Log.d(TAG,"- Nal unit length: " + naluLength + " delay: "+delay/1000000+" type: "+type);

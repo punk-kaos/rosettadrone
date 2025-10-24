@@ -326,23 +326,21 @@ public class RtpSocket implements Runnable {
                 }
                 mReport.update(mPackets[mBufferOut].getLength(), (mTimestamps[mBufferOut]/100L)*(mClock/1000L)/10000L);
                 mOldTimestamp = mTimestamps[mBufferOut];
-                if (mCount++ > 30) {
-                    if (mTransport == TRANSPORT_UDP) {
-                        if (mUseDualVideoOut) {
-                            mPackets[mBufferOut].setPort(mPort);
-                            mSocketUDP.send(mPackets[mBufferOut]);
+                if (mTransport == TRANSPORT_UDP) {
+                    if (mUseDualVideoOut) {
+                        mPackets[mBufferOut].setPort(mPort);
+                        mSocketUDP.send(mPackets[mBufferOut]);
 
-                            mPackets[mBufferOut].setPort(mPort + 1);
-                            mSocketUDP2.send(mPackets[mBufferOut]);
-                        } else {
-                            mSocketUDP.send(mPackets[mBufferOut]);
-                        }
-                    } else if (mTransport == TRANSPORT_MULTICAST) {
-                        mSocket.send(mPackets[mBufferOut]);
+                        mPackets[mBufferOut].setPort(mPort + 1);
+                        mSocketUDP2.send(mPackets[mBufferOut]);
+                    } else {
+                        mSocketUDP.send(mPackets[mBufferOut]);
                     }
-                    else {
-                        sendTCP();
-                    }
+                } else if (mTransport == TRANSPORT_MULTICAST) {
+                    mSocket.send(mPackets[mBufferOut]);
+                }
+                else {
+                    sendTCP();
                 }
                 if (++mBufferOut >= mBufferCount) mBufferOut = 0;
                 mBufferRequested.release();

@@ -134,25 +134,83 @@ public class VideoService extends Service implements NativeHelper.NativeDataList
     }
 
     public void splitNALs(byte[] buffer) {
-        // One H264 frame can contain multiple NALs
-        int packet_start_idx = 0;
-        int packet_end_idx = 0;
-        if (buffer.length < 4)
-            return;
+        if (buffer == null || buffer.length == 0) return;
 
-        for (int i = 3; i < buffer.length - 3; i++) {
-            // This block handles all but the last NAL in the frame
-            if ((buffer[i] & 0xff) == 0 && (buffer[i + 1] & 0xff) == 0 && (buffer[i + 2] & 0xff) == 0 && (buffer[i + 3] & 0xff) == 1) {
-                packet_end_idx = i;
-                byte[] packet = Arrays.copyOfRange(buffer, packet_start_idx, packet_end_idx);
-                sendNAL(packet);
-                packet_start_idx = i;
+        if (isAnnexB(buffer)) {
+            int start = 0;
+            while (start < buffer.length) {
+                int next = findNextStartCode(buffer, start + 3);
+                int nalStart = skipStartCode(buffer, start, next);
+                if (nalStart < next) {
+                    emitNal(Arrays.copyOfRange(buffer, nalStart, next));
+                }
+                if (next == buffer.length) break;
+                start = next;
+            }
+        } else {
+            int offset = 0;
+            while (offset + 4 <= buffer.length) {
+                int nalSize = ((buffer[offset] & 0xFF) << 24)
+                        | ((buffer[offset + 1] & 0xFF) << 16)
+                        | ((buffer[offset + 2] & 0xFF) << 8)
+                        | (buffer[offset + 3] & 0xFF);
+                offset += 4;
+                if (nalSize <= 0 || offset + nalSize > buffer.length) {
+                    break;
+                }
+                emitNal(Arrays.copyOfRange(buffer, offset, offset + nalSize));
+                offset += nalSize;
             }
         }
-        // This block handles the last NAL in the frame, or the single NAL if only one exists
-        packet_end_idx = buffer.length;
-        byte[] packet = Arrays.copyOfRange(buffer, packet_start_idx, packet_end_idx);
-        sendNAL(packet);
+    }
+
+    private boolean isAnnexB(byte[] buffer) {
+        return buffer.length >= 4
+                && buffer[0] == 0x00
+                && buffer[1] == 0x00
+                && buffer[2] == 0x00
+                && buffer[3] == 0x01;
+    }
+
+    private int findNextStartCode(byte[] data, int index) {
+        for (int i = index; i + 3 <= data.length; i++) {
+            if (data[i] == 0x00 && data[i + 1] == 0x00) {
+                if (data[i + 2] == 0x01) {
+                    return i;
+                }
+                if (i + 3 < data.length && data[i + 2] == 0x00 && data[i + 3] == 0x01) {
+                    return i;
+                }
+            }
+        }
+        return data.length;
+    }
+
+    private int skipStartCode(byte[] data, int start, int next) {
+        int i = start;
+        while (i < next && data[i] == 0x00) {
+            i++;
+        }
+        if (i < next && data[i] == 0x01) {
+            i++;
+        }
+        if (i < next && data[i] == 0x00 && (i + 1) < next && data[i + 1] == 0x01) {
+            i += 2;
+        }
+        return i;
+    }
+
+    private void emitNal(byte[] packet) {
+        if (packet == null || packet.length == 0) {
+            return;
+        }
+        byte[] nal = new byte[packet.length + 4];
+        nal[0] = 0x00;
+        nal[1] = 0x00;
+        nal[2] = 0x00;
+        nal[3] = 0x01;
+        System.arraycopy(packet, 0, nal, 4, packet.length);
+        sendNAL(nal);
     }
 
     protected void sendNAL(byte[] buffer) {

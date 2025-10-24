@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    package="sq.rogue.rosettadrone">
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- DJI SDK need permission -->
     <!--
@@ -102,8 +101,10 @@
             tools:ignore="Instantiatable">
         </service>
 
-        <!--<service android:name="sq.rogue.rosettadrone.video.VideoService">
-        </service>-->
+        <service
+            android:name="sq.rogue.rosettadrone.video.VideoService"
+            android:enabled="true"
+            android:exported="false" />
 
         <!-- DJI SDK needed also by emulator, this is a problem... -->
         <uses-library
@@ -127,4 +128,3 @@
             android:value="@string/google_key" />
     </application>
 </manifest>
-
